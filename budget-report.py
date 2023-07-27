@@ -7,6 +7,7 @@
 import pandas as pd
 from datetime import datetime
 import gspread
+import os
 
 
 # In[156]:
@@ -28,15 +29,17 @@ def is_notebook() -> bool:
         #print("Probably standard")
         return False
     
+CREDS_FILE = 'service_account.json'
 if is_notebook():
     import IPython
     HTML = IPython.display.HTML
+    creds_file_path = CREDS_FILE
+else:
+  creds_file_path = os.path.dirname(os.path.realpath(__file__)) + '/' +  CREDS_FILE
 
 
 # In[157]:
-
-
-gc = gspread.service_account(filename='service_account.json')
+gc = gspread.service_account(filename=creds_file_path)
 
 years = []
 years.append(datetime.now().year)
