@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[155]:
+# In[ ]:
 
 
 import pandas as pd
@@ -10,7 +10,7 @@ import gspread
 import os
 
 
-# In[156]:
+# In[ ]:
 
 
 def is_notebook() -> bool:
@@ -29,16 +29,23 @@ def is_notebook() -> bool:
         #print("Probably standard")
         return False
     
+
+
+# In[ ]:
+
+
 CREDS_FILE = 'service_account.json'
 if is_notebook():
     import IPython
     HTML = IPython.display.HTML
     creds_file_path = CREDS_FILE
 else:
-  creds_file_path = os.path.dirname(os.path.realpath(__file__)) + '/' +  CREDS_FILE
+    creds_file_path = os.path.dirname(os.path.realpath(__file__)) + '/' +  CREDS_FILE
 
 
-# In[157]:
+# In[ ]:
+
+
 gc = gspread.service_account(filename=creds_file_path)
 
 years = []
@@ -49,12 +56,17 @@ rdfs = []
 for year in years:
     sh = gc.open(str(year))
     worksheet = sh.worksheet('USD')
+    report_id = 'Report'
+    try:
+        report_worksheet = sh.add_worksheet(title=report_id, rows=200, cols=14)
+    except:
+        report_worksheet = sh.worksheet(report_id)
     rdfs.append(pd.DataFrame(worksheet.get_all_records()))
     #rdfs.append(pd.read_excel(f'~/playground/Expenses/{year}.xlsx', sheet_name="USD"))
 
 
 
-# In[158]:
+# In[ ]:
 
 
 rdf = pd.concat(rdfs)
@@ -64,7 +76,7 @@ rdf['Date'] =  pd.DatetimeIndex(rdf.Date)
 rdf = rdf.drop(columns=["Notes", "Description"])
 
 
-# In[159]:
+# In[ ]:
 
 
 credits = rdf[(rdf["Transaction Type"] == "credit") & (rdf["Category"] != "Salary")]
@@ -72,14 +84,14 @@ credits = credits.assign(Amount=lambda x: x.Amount * -1)
 credits['Amount'].sum()
 
 
-# In[160]:
+# In[ ]:
 
 
 debits = rdf[rdf["Transaction Type"] == "debit"]
 debits['Amount'].sum()
 
 
-# In[161]:
+# In[ ]:
 
 
 df = pd.concat([debits, credits])
@@ -88,21 +100,21 @@ df = df.drop(columns="Category")
 #df
 
 
-# In[162]:
+# In[ ]:
 
 
 def category(parsed):
     return parsed.split('(').str[0].str.strip()
 
 
-# In[163]:
+# In[ ]:
 
 
 def amount(parsed):
     return parsed.split('(').str[1]
 
 
-# In[164]:
+# In[ ]:
 
 
 df = df.assign(Category=lambda x: category(x.parsed.str))
@@ -113,7 +125,7 @@ df['RAmount'].fillna(df['Amount'], inplace=True)
 df = df.drop(columns='parsed')
 
 
-# In[165]:
+# In[ ]:
 
 
 monthly_report = df.groupby([df.Date.dt.to_period('M'), "Category"])['RAmount'].sum().reset_index(name='Amount').sort_values(by=['Date', 'Amount'], ascending=False)
@@ -121,20 +133,20 @@ monthly_report['Amount'].sum()
 #monthly_report
 
 
-# In[166]:
+# In[ ]:
 
 
 pv_table = pd.pivot_table(monthly_report, index = 'Category', columns = 'Date', values = 'Amount', fill_value=0, dropna=False)
 #fig = pv_table.plot(kind = 'bar', figsize=(20,10),  yticks=(100, 250, 500, 1000, 1500, 2000, 2500, 5000))
 
 
-# In[167]:
+# In[ ]:
 
 
 #fig.get_figure().savefig("monthly_category_report.png", format="png")
 
 
-# In[168]:
+# In[ ]:
 
 
 category_report = df.groupby(["Category"])['RAmount'].sum().reset_index(name='Amount').sort_values(by=['Amount'], ascending=False)
@@ -142,34 +154,40 @@ category_report = df.groupby(["Category"])['RAmount'].sum().reset_index(name='Am
 #    display(HTML(category_report.to_html(index=False, header=True)))
 
 
-# In[169]:
+# In[ ]:
 
 
 annual_monthly_report=category_report.merge(pv_table, on='Category')
 
 annual_monthly_report.loc['Total'] = annual_monthly_report.sum(numeric_only=True)
 annual_monthly_report = annual_monthly_report.fillna(value={"Category": "Total"}, limit=1).sort_values(by=['Amount'], ascending=False)
-with pd.option_context("display.max_rows", 1000):   
-    if is_notebook():            
+
+columns = annual_monthly_report.columns.values.tolist()
+for idx, val in enumerate(columns):
+    if isinstance(val, pd.Period):
+        # pd.Period is not json serializable for writing to Google Sheets
+        columns[idx] = val.strftime('%B')
+        
+report_worksheet.update( [columns] + annual_monthly_report.values.tolist())
+if is_notebook():
+    with pd.option_context("display.max_rows", 1000):   
         display(HTML(annual_monthly_report.to_html(index=False, header=True)))
-    else:
-        annual_monthly_report.to_html(open('report.html','w'), index=False, header=True)
 
 
-# In[170]:
+# In[ ]:
 
 
 # Bar Chart of Annual Category Report
 #category_report.plot.bar(x='Category', y='Amount', figsize=(20,10),  yticks=(100, 250, 500, 1000, 1500, 2000, 2500, 5000))
 
 
-# In[171]:
+# In[ ]:
 
 
 category_report['Amount'].sum()
 
 
-# In[172]:
+# In[ ]:
 
 
 merchant_report = df.groupby(["Merchant"])['RAmount'].sum().reset_index(name='Amount').sort_values(by=['Amount'], ascending=False)
@@ -177,21 +195,21 @@ merchant_report = df.groupby(["Merchant"])['RAmount'].sum().reset_index(name='Am
 #    display(HTML(merchant_report.to_html(index=False, header=True)))
 
 
-# In[173]:
+# In[ ]:
 
 
 monthly_merchant_report = df.groupby([df.Date.dt.to_period('M'), "Merchant"])['RAmount'].sum().reset_index(name='Amount').sort_values(by=['Date', 'Amount'], ascending=False)
 #monthly_report
 
 
-# In[174]:
+# In[ ]:
 
 
 pv_merchant_table = pd.pivot_table(monthly_merchant_report, index = 'Merchant', columns = 'Date', values = 'Amount', fill_value=0, dropna=False)
 #fig = pv_merchant_table.plot(kind = 'bar', figsize=(20,10),  yticks=(100, 250, 500, 1000, 1500, 2000, 2500, 5000))
 
 
-# In[175]:
+# In[ ]:
 
 
 annual_monthly_merchant_report=merchant_report.merge(pv_merchant_table, on='Merchant')
