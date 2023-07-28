@@ -56,11 +56,12 @@ rdfs = []
 for year in years:
     sh = gc.open(str(year))
     worksheet = sh.worksheet('USD')
-    report_id = 'Report'
+    report_sh = gc.open('Report')
+    report_id = str(year)
     try:
-        report_worksheet = sh.add_worksheet(title=report_id, rows=200, cols=14)
+        report_worksheet = report_sh.add_worksheet(title=report_id, rows=200, cols=14)
     except:
-        report_worksheet = sh.worksheet(report_id)
+        report_worksheet = report_sh.worksheet(report_id)
     rdfs.append(pd.DataFrame(worksheet.get_all_records()))
     #rdfs.append(pd.read_excel(f'~/playground/Expenses/{year}.xlsx', sheet_name="USD"))
 
