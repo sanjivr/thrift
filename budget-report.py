@@ -122,7 +122,7 @@ df = df.assign(Category=lambda x: category(x.parsed.str))
 df = df.assign(RAmount=lambda x: amount(x.parsed.str))
 
 df['RAmount'] = df['RAmount'].str.split(')').str[0].astype('float')
-df['RAmount'].fillna(df['Amount'], inplace=True)
+df.fillna({'RAmount': df['Amount']}, inplace=True)
 df = df.drop(columns='parsed')
 
 
