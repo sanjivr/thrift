@@ -100,6 +100,11 @@ df = df.assign(parsed=df['Category'].str.split('+')).explode('parsed')
 df = df.drop(columns="Category")
 #df
 
+tax_categories = [
+    'Federal Tax',
+    'State Tax'
+]
+df = df[~df.Category.isin(tax_categories)]
 
 # In[ ]:
 
